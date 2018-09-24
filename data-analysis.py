@@ -15,7 +15,7 @@ window = QMainWindow()
 generated_interface = interface.Ui_MainWindow()
 generated_interface.setupUi(window)
 generated_interface.plotWidget.plot(range(100), range(100))
-
+print( "hoi")
 window.show()
 sys.exit(app.exec_())
 
