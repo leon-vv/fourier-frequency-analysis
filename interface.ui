@@ -110,14 +110,14 @@
            <property name="horizontalSpacing">
             <number>22</number>
            </property>
-           <item row="0" column="0">
+           <item row="1" column="0">
             <widget class="QLabel" name="label_2">
              <property name="text">
               <string>Amplitude filter</string>
              </property>
             </widget>
            </item>
-           <item row="1" column="0">
+           <item row="2" column="0">
             <widget class="QSlider" name="amplitude_slider">
              <property name="sizePolicy">
               <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
@@ -130,39 +130,60 @@
              </property>
             </widget>
            </item>
-           <item row="1" column="1">
+           <item row="2" column="1">
             <widget class="QLabel" name="amplitude_label">
              <property name="text">
               <string>50 (min: 30, max: 50)</string>
              </property>
             </widget>
            </item>
-           <item row="2" column="0">
+           <item row="3" column="0">
             <widget class="QLabel" name="label_8">
              <property name="text">
               <string>Frequency filter</string>
              </property>
             </widget>
            </item>
-           <item row="3" column="0">
+           <item row="4" column="0">
             <widget class="QRadioButton" name="radio_keep">
              <property name="text">
               <string>Keep only:</string>
              </property>
             </widget>
            </item>
-           <item row="4" column="0">
+           <item row="5" column="0">
             <widget class="QRadioButton" name="radio_remove">
              <property name="text">
               <string>Remove only:</string>
              </property>
             </widget>
            </item>
-           <item row="3" column="1">
+           <item row="4" column="1">
             <widget class="QLineEdit" name="keep_frequenties"/>
            </item>
-           <item row="4" column="1">
+           <item row="5" column="1">
             <widget class="QLineEdit" name="remove_frequencies"/>
+           </item>
+           <item row="0" column="0">
+            <widget class="QLabel" name="label_5">
+             <property name="text">
+              <string>Show</string>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="1">
+            <widget class="QComboBox" name="domain_picker">
+             <item>
+              <property name="text">
+               <string>Frequency Domain</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Time Domain</string>
+              </property>
+             </item>
+            </widget>
            </item>
           </layout>
          </widget>
