@@ -71,6 +71,12 @@ class UI:
         # Setup callbacks
         self.interface.pick_file_button.clicked.connect(self.open_file)
         self.interface.domain_picker.currentIndexChanged.connect(lambda: self.reload_view(True))
+
+        self.interface.amplitude_edit.editingFinished.connect(self.source_changed)
+        self.interface.frequency_edit.editingFinished.connect(self.source_changed)
+        self.interface.mean_edit.editingFinished.connect(self.source_changed)
+        self.interface.deviation_edit.editingFinished.connect(self.source_changed)
+        self.interface.endtime_edit.editingFinished.connect(self.source_changed)
         
         self.interface.source_picker.currentIndexChanged.connect(self.source_changed)
         

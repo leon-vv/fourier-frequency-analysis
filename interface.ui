@@ -49,6 +49,9 @@
            <item>
             <widget class="QWidget" name="widget_2" native="true">
              <layout class="QFormLayout" name="formLayout">
+              <property name="bottomMargin">
+               <number>0</number>
+              </property>
               <item row="1" column="0">
                <widget class="QLabel" name="label_3">
                 <property name="sizePolicy">
@@ -92,6 +95,9 @@
            <item>
             <widget class="QWidget" name="sine_controls" native="true">
              <layout class="QFormLayout" name="formLayout_5">
+              <property name="topMargin">
+               <number>0</number>
+              </property>
               <item row="0" column="0">
                <widget class="QLabel" name="label_2">
                 <property name="text">
@@ -168,6 +174,9 @@
            <item>
             <widget class="QWidget" name="file_control" native="true">
              <layout class="QFormLayout" name="formLayout_4">
+              <property name="topMargin">
+               <number>0</number>
+              </property>
               <item row="0" column="0">
                <widget class="QLabel" name="label_4">
                 <property name="text">
