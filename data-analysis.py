@@ -77,11 +77,18 @@ class UI:
         # Wait for window to close
         self.window.show()
         sys.exit(self.app.exec_())
-	
     def source_changed(self):
 	    if self.interface.source_picker.currentText() == "Sine":
-	        self.signal_data = SineData()
+	        mean = float(self.interface.mean_edit.text())
+	        deviation = float(self.interface.deviation_edit.text())
+	        amplitude = float(self.interface.amplitude_edit.text())
+	        frequency = float(self.interface.frequency_edit.text())
+	        endtime = float(self.interface.endtime_edit.text())
+	        self.signal_data = SineData(mean, deviation, amplitude, frequency, endtime)
+	        self.interface.file_control.hide()
 	        self.reload_view(True)
+	    if self.interface.source_picker.currentText() == "File":
+	        self.interface.sine_control.hide()
 	
 	
     def reload_view(self, auto_range=False):
