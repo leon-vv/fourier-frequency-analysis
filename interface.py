@@ -11,7 +11,7 @@ from PyQt5 import QtCore, QtGui, QtWidgets
 class Ui_MainWindow(object):
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(902, 567)
+        MainWindow.resize(902, 618)
         MainWindow.setAccessibleName("")
         MainWindow.setUnifiedTitleAndToolBarOnMac(False)
         self.centralwidget = QtWidgets.QWidget(MainWindow)
@@ -196,6 +196,7 @@ class Ui_MainWindow(object):
         self.source_picker.setItemText(2, _translate("MainWindow", "MyDaq device"))
         self.source_picker.setItemText(3, _translate("MainWindow", "Rigol Oscilloscope"))
         self.label_2.setText(_translate("MainWindow", "Amplitude (V)"))
+        self.amplitude_edit.setText(_translate("MainWindow", "1"))
         self.label_6.setText(_translate("MainWindow", "Frequency (Hz)"))
         self.label_7.setText(_translate("MainWindow", "Eindtijd (s)"))
         self.label_8.setText(_translate("MainWindow", "Mean Noise"))
