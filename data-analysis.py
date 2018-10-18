@@ -24,17 +24,33 @@ class SignalData:
         self.signal_data = signal_data
 
         self.freqs = np.fft.fft(signal_data) # [self.fourier_analysis(n) for n in range(0, len(signal_data))]
-
-    def max_amplitude(self):
-        return np.max(self.data)
-
-    def min_amplitude(self):
-        return np.min(self.data)
     
     def get_frequencies(self):
         return self.freqs
 
-
+class SineData(object):
+    def __init__(self, noise_mean = 0, noise_sigma = 0.1, amplitude=1, frequency=1, eindtijd=1):
+        self.amplitude = amplitude
+        self.frequencies= [frequency]
+        self.time_data = np.linspace(0, eindtijd,1000)
+        self.signal_data= amplitude*np.sin(self.time_data*2*np.pi*frequency)
+        self.signal_data += np.random.normal(noise_mean, noise_sigma, len(self.time_data))
+    
+    def get_frequencies(self):
+        return self.frequencies
+    
+    
+    def gokje(self, x,a, b, c, d):
+        return a*np.sin(c*(x+d))+b
+  
+    def evaluate(self):
+            params, parcov = optimize.curve_fit(self.gokje, xdata=self.x, ydata=self.y_data)
+            print(params, parcov)
+            fit_data = params[0]*np.sin(params[2]*(self.x+params[3]))+params[1]
+            plt.plot(self.x, fit_data, label = "Fit")
+            plt.legend()
+            plt.show()
+            
 class UI:
 
     def __init__(self):
@@ -55,12 +71,19 @@ class UI:
         # Setup callbacks
         self.interface.pick_file_button.clicked.connect(self.open_file)
         self.interface.domain_picker.currentIndexChanged.connect(lambda: self.reload_view(True))
-         
+        
+        self.interface.source_picker.currentIndexChanged.connect(self.source_changed)
         
         # Wait for window to close
         self.window.show()
         sys.exit(self.app.exec_())
-
+	
+    def source_changed(self):
+	    if self.interface.source_picker.currentText() == "Sine":
+	        self.signal_data = SineData()
+	        self.reload_view(True)
+	
+	
     def reload_view(self, auto_range=False):
 
         print("Reloading view")
@@ -69,7 +92,7 @@ class UI:
 
         view = self.interface.domain_picker.currentText() 
         
-        assert view == "Time Domain" or view == "Frequency Domain"
+       
 
         self.interface.plot_view.clear()
         pen = pg.mkPen(0.3, width=1)
