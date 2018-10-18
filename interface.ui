@@ -68,6 +68,11 @@
              </item>
              <item>
               <property name="text">
+               <string>Sine</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
                <string>MyDaq device</string>
               </property>
              </item>
