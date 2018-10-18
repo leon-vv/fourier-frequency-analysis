@@ -75,13 +75,14 @@ class UI:
         self.interface.source_picker.currentIndexChanged.connect(self.source_changed)
         
         # Wait for window to close
+        self.source_changed()
         self.window.show()
         sys.exit(self.app.exec_())
         
     
     def source_changed(self):
         if self.interface.source_picker.currentText() == "Sine":
-            self.interface.sine_control.setVisibility(True)
+            self.interface.sine_controls.setVisible(True)
             mean = float(self.interface.mean_edit.text())
             deviation = float(self.interface.deviation_edit.text())
             amplitude = float(self.interface.amplitude_edit.text())
@@ -90,26 +91,22 @@ class UI:
             self.signal_data = SineData(mean, deviation, amplitude, frequency, endtime)
             self.interface.file_control.hide()
         if self.interface.source_picker.currentText() == "File":
-            self.interface.file_control.setVisibility(True)
-            self.interface.sine_control.hide()
+            self.interface.file_control.setVisible(True)
+            self.interface.sine_controls.hide()
     
         self.reload_view(True)
     
     def reload_view(self, auto_range=False):
-
-        print("Reloading view")
-        print(self.signal_data.time_data)  
-        print(self.signal_data.signal_data)  
-
+        
+        if self.signal_data == None:
+            return
+        
         view = self.interface.domain_picker.currentText() 
         
-       
-
         self.interface.plot_view.clear()
         pen = pg.mkPen(0.3, width=1)
 
         if view == "Time Domain":
-            print("Plotting time domain")
             self.interface.plot_view.plot(
                     self.signal_data.time_data,
                     self.signal_data.signal_data,
