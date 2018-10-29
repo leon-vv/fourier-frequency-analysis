@@ -6,8 +6,8 @@ from PyQt5.QtWidgets import *
 
 import pyqtgraph as pg
 import numpy as np
-
 import interface
+from scipy import signal
 
 class SignalData:
 
@@ -47,9 +47,28 @@ class SineData(object):
             params, parcov = optimize.curve_fit(self.gokje, xdata=self.x, ydata=self.y_data)
             print(params, parcov)
             fit_data = params[0]*np.sin(params[2]*(self.x+params[3]))+params[1]
-            plt.plot(self.x, fit_data, label = "Fit")
+            plt.plot(self.time_data, fit_data, label = "Fit")
             plt.legend()
             plt.show()
+
+class GaussData(SignalData):
+    def __init__(self, mean, sigma, maxtime):
+        
+        time_data = np.linspace(0, maxtime, 1000)
+        signal_data = signal.gaussian(1000, sigma)
+    	SignalData.__init__(self, time_data, signal_data)
+
+
+class DeltaData(SignalData):
+    def __init__(self, mean, amplitude, maxtime):
+        self.mean = mean
+        self.amplitude = amplitude
+        self.
+        self.signal_data = amplitude * signal.unit_impulse(1000, math.round((mean/maxtime)*1000)))
+
+        
+    
+        
             
 class UI:
 
