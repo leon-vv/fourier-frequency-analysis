@@ -42,14 +42,6 @@ class SineData(object):
     def gokje(self, x,a, b, c, d):
         return a*np.sin(c*(x+d))+b
   
-    def evaluate(self):
-            params, parcov = optimize.curve_fit(self.gokje, xdata=self.x, ydata=self.y_data)
-            print(params, parcov)
-            fit_data = params[0]*np.sin(params[2]*(self.x+params[3]))+params[1]
-            plt.plot(self.time_data, fit_data, label = "Fit")
-            plt.legend()
-            plt.show()
-
 class GaussData(SignalData):
     def __init__(self, mean, sigma, maxtime):
         
