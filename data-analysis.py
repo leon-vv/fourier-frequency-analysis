@@ -2,11 +2,19 @@ import sys
 from math import pi
 
 # Names are already prefixed with Q
-from PyQt5.QtWidgets import *
+from PyQt5.QtWidgets import QApplication, QMainWindow, QFileDialog
 import pyqtgraph as pg
 import numpy as np
 import interface
-from scipy import signal
+from scipy import optimize, signal
+
+
+# Utility function
+def string_to_float(string, default):
+    try:
+        return float(string)
+    except ValueError:
+        return default
 
 class SignalData:
 
@@ -79,7 +87,6 @@ class UI:
         
         # Setup callbacks
         self.interface.pick_file_button.clicked.connect(self.open_file)
-        self.interface.domain_picker.currentIndexChanged.connect(lambda: self.reload_view(True))
 
         self.interface.amplitude_edit.editingFinished.connect(self.source_changed)
         self.interface.frequency_edit.editingFinished.connect(self.source_changed)
@@ -97,7 +104,6 @@ class UI:
     
     def source_changed(self):
         if self.interface.source_picker.currentText() == "Sine":
-            self.interface.sine_controls.setVisible(True)
             mean = float(self.interface.mean_edit.text())
             deviation = float(self.interface.deviation_edit.text())
             amplitude = float(self.interface.amplitude_edit.text())
@@ -107,7 +113,6 @@ class UI:
             self.interface.file_control.hide()
         if self.interface.source_picker.currentText() == "File":
             self.interface.file_control.setVisible(True)
-            self.interface.sine_controls.hide()
     
         self.reload_view(True)
     
@@ -116,22 +121,23 @@ class UI:
         if self.signal_data == None:
             return
         
-        view = self.interface.domain_picker.currentText() 
+        self.interface.generated_time_plot.clear()
+        self.interface.generated_frequency_plot.clear()
         
-        self.interface.plot_view.clear()
         pen = pg.mkPen(0.3, width=1)
 
-        if view == "Time Domain":
-            self.interface.plot_view.plot(
-                    self.signal_data.time_data,
-                    self.signal_data.signal_data,
-                    pen=pen)
-        else:
-            f = self.signal_data.get_frequencies()
-            self.interface.plot_view.plot(np.abs(f), pen=pen)
+        self.interface.generated_time_plot.plot(
+                self.signal_data.time_data,
+                self.signal_data.signal_data,
+                pen=pen)
+
+        f = self.signal_data.get_frequencies()
+        
+        
+        self.interface.generated_frequency_plot.plot(np.abs(f), pen=pen)
 
         if(auto_range): self.interface.plot_view.autoRange()
-
+    
     # Called when a new file is opened
     def open_file(self):
         f = QFileDialog.getOpenFileName(filter="*.txt")
