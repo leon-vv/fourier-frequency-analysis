@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>680</width>
+    <width>805</width>
     <height>703</height>
    </rect>
   </property>
@@ -204,7 +204,14 @@
                       </widget>
                      </item>
                      <item row="1" column="1">
-                      <widget class="QLineEdit" name="sample_time_edit"/>
+                      <widget class="QLineEdit" name="sample_time_edit">
+                       <property name="inputMask">
+                        <string>99.9999</string>
+                       </property>
+                       <property name="text">
+                        <string>.</string>
+                       </property>
+                      </widget>
                      </item>
                     </layout>
                    </widget>
@@ -301,26 +308,10 @@
          </widget>
         </item>
         <item>
-         <widget class="QFrame" name="frame_4">
-          <property name="sizePolicy">
-           <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
-            <horstretch>2</horstretch>
-            <verstretch>0</verstretch>
-           </sizepolicy>
-          </property>
-          <property name="frameShape">
-           <enum>QFrame::StyledPanel</enum>
-          </property>
-          <property name="frameShadow">
-           <enum>QFrame::Raised</enum>
-          </property>
-         </widget>
-        </item>
-        <item>
          <widget class="QFrame" name="frame">
           <property name="sizePolicy">
            <sizepolicy hsizetype="Expanding" vsizetype="Preferred">
-            <horstretch>1</horstretch>
+            <horstretch>3</horstretch>
             <verstretch>0</verstretch>
            </sizepolicy>
           </property>
@@ -348,7 +339,7 @@
                </widget>
               </item>
               <item>
-               <widget class="PlotWidget" name="plot_view_2">
+               <widget class="PlotWidget" name="generated_time_plot">
                 <property name="sizePolicy">
                  <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
                   <horstretch>2</horstretch>
@@ -365,7 +356,7 @@
                </widget>
               </item>
               <item>
-               <widget class="PlotWidget" name="plot_view_4">
+               <widget class="PlotWidget" name="generated_frequency_plot">
                 <property name="sizePolicy">
                  <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
                   <horstretch>2</horstretch>
@@ -394,7 +385,7 @@
                </widget>
               </item>
               <item>
-               <widget class="PlotWidget" name="plot_view_3">
+               <widget class="PlotWidget" name="incoming_time_plot">
                 <property name="sizePolicy">
                  <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
                   <horstretch>2</horstretch>
@@ -411,7 +402,7 @@
                </widget>
               </item>
               <item>
-               <widget class="PlotWidget" name="plot_view_5">
+               <widget class="PlotWidget" name="incoming_frequency_plot">
                 <property name="sizePolicy">
                  <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
                   <horstretch>2</horstretch>
