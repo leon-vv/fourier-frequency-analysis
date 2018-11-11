@@ -3,7 +3,6 @@ from math import pi
 
 # Names are already prefixed with Q
 from PyQt5.QtWidgets import *
-
 import pyqtgraph as pg
 import numpy as np
 import interface
@@ -56,15 +55,14 @@ class GaussData(SignalData):
         
         time_data = np.linspace(0, maxtime, 1000)
         signal_data = signal.gaussian(1000, sigma)
-    	SignalData.__init__(self, time_data, signal_data)
+        SignalData.__init__(self, time_data, signal_data)
 
 
 class DeltaData(SignalData):
     def __init__(self, mean, amplitude, maxtime):
         self.mean = mean
         self.amplitude = amplitude
-        self.
-        self.signal_data = amplitude * signal.unit_impulse(1000, math.round((mean/maxtime)*1000)))
+        self.signal_data = amplitude * signal.unit_impulse(1000, round((mean/maxtime)*1000))
 
         
     
