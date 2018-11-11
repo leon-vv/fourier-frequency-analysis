@@ -2,7 +2,7 @@ import sys
 from math import pi
 
 # Names are already prefixed with Q
-from PyQt5.QtWidgets import QApplication, QMainWindow, QFileDialog
+from PyQt5.QtWidgets import QApplication, QMainWindow, QFileDialog, QLineEdit
 import pyqtgraph as pg
 import numpy as np
 import interface
@@ -21,7 +21,7 @@ class SignalData:
     def fourier_analysis(self, freq):
         d = self.signal_data
         N = len(d)
-        return np.sum([d[n] * np.exp(-2* pi * 1j * freq * n / float(N)) for n in range(0, N)])
+        return 1/N * np.sum([d[n] * np.exp(-2* pi * 1j * freq * n / float(N)) for n in range(0, N)])
 
     def __init__(self, time_data, signal_data):
 
@@ -30,44 +30,42 @@ class SignalData:
         self.time_data = time_data
         self.signal_data = signal_data
 
-        self.freqs = np.fft.fft(signal_data) # [self.fourier_analysis(n) for n in range(0, len(signal_data))]
+        self.freqs = 1/len(signal_data)* np.fft.fft(signal_data) # [self.fourier_analysis(n) for n in range(0, len(signal_data))]
+    
+    def get_time_data(self):
+        return self.time_data
+
+    def get_signal_data(self):
+        return self.signal_data
     
     def get_frequencies(self):
         return self.freqs
 
-class SineData(object):
+class SineData(SignalData):
     def __init__(self, noise_mean = 0, noise_sigma = 0.1, amplitude=1, frequency=1, eindtijd=1):
-        self.amplitude = amplitude
-        self.frequencies= [frequency]
-        self.time_data = np.linspace(0, eindtijd,1000)
-        self.signal_data= amplitude*np.sin(self.time_data*2*np.pi*frequency)
-        self.signal_data += np.random.normal(noise_mean, noise_sigma, len(self.time_data))
-    
-    def get_frequencies(self):
-        return self.frequencies
-    
-    
-    def gokje(self, x,a, b, c, d):
-        return a*np.sin(c*(x+d))+b
-  
-class GaussData(SignalData):
-    def __init__(self, mean, sigma, maxtime):
+        amplitude = amplitude
+        frequencies= [frequency]
+        time_data = np.linspace(0, eindtijd,1000)
+        signal_data = amplitude*np.sin(time_data*2*np.pi*frequency)
+        signal_data += np.random.normal(noise_mean, noise_sigma, len(time_data))
         
-        time_data = np.linspace(0, maxtime, 1000)
-        signal_data = signal.gaussian(1000, sigma)
+        SignalData.__init__(self, time_data, signal_data)
+    
+class GaussData(SignalData):
+    def __init__(self, amplitude, sigma, end_time):
+        time_data = np.linspace(0, end_time, 1000)
+        signal_data = amplitude * signal.gaussian(1000, sigma)
+
         SignalData.__init__(self, time_data, signal_data)
 
-
 class DeltaData(SignalData):
-    def __init__(self, mean, amplitude, maxtime):
-        self.mean = mean
-        self.amplitude = amplitude
-        self.signal_data = amplitude * signal.unit_impulse(1000, round((mean/maxtime)*1000))
+    def __init__(self, amplitude, end_time):
+        amplitude = amplitude
+        time_data = np.linspace(0, end_time, 1000)
+        signal_data = amplitude * signal.unit_impulse(1000, idx='mid')
 
-        
-    
-        
-            
+        SignalData.__init__(self, time_data, signal_data)
+
 class UI:
 
     def __init__(self):
@@ -87,14 +85,13 @@ class UI:
         
         # Setup callbacks
         self.interface.pick_file_button.clicked.connect(self.open_file)
-
-        self.interface.amplitude_edit.editingFinished.connect(self.source_changed)
-        self.interface.frequency_edit.editingFinished.connect(self.source_changed)
-        self.interface.mean_edit.editingFinished.connect(self.source_changed)
-        self.interface.deviation_edit.editingFinished.connect(self.source_changed)
-        self.interface.endtime_edit.editingFinished.connect(self.source_changed)
-        
         self.interface.source_picker.currentIndexChanged.connect(self.source_changed)
+
+        # Connect all line edits to method source_changed 
+        for k in self.interface.__dict__:
+            field = self.interface.__dict__[k]
+            if isinstance(field, QLineEdit):
+                field.editingFinished.connect(self.source_changed)
         
         # Wait for window to close
         self.source_changed()
@@ -103,17 +100,36 @@ class UI:
         
     
     def source_changed(self):
-        if self.interface.source_picker.currentText() == "Sine":
-            mean = float(self.interface.mean_edit.text())
-            deviation = float(self.interface.deviation_edit.text())
-            amplitude = float(self.interface.amplitude_edit.text())
-            frequency = float(self.interface.frequency_edit.text())
-            endtime = float(self.interface.endtime_edit.text())
+
+        i = self.interface
+        tof = string_to_float
+        source_text = i.source_picker.currentText()
+
+        if source_text == "Sine":
+            mean = tof(i.mean_edit.text(), 0)
+            deviation = tof(i.deviation_edit.text(), 0.1)
+            amplitude = tof(i.amplitude_edit.text(), 1)
+            frequency = tof(i.frequency_edit.text(), 5)
+            endtime = tof(i.endtime_edit.text(), 3)
             self.signal_data = SineData(mean, deviation, amplitude, frequency, endtime)
-            self.interface.file_control.hide()
-        if self.interface.source_picker.currentText() == "File":
-            self.interface.file_control.setVisible(True)
-    
+
+            i.controls_stack.setCurrentWidget(i.sine_controls)
+        elif source_text == "Gauss":
+            amplitude = tof(i.gauss_amplitude.text(), 1)
+            sigma = tof(i.gauss_sigma.text(), 100)
+            endtime = tof(i.gauss_end_time.text(), 3)
+            self.signal_data = GaussData(amplitude, sigma, endtime)
+
+            i.controls_stack.setCurrentWidget(i.gauss_controls)
+        elif source_text == "Delta":
+            amplitude = tof(i.delta_amplitude.text(), 2)
+            endtime = tof(i.delta_end_time.text(), 3)
+            self.signal_data = DeltaData(amplitude, endtime)
+
+            i.controls_stack.setCurrentWidget(i.delta_controls)
+        else:
+            i.controls_stack.setCurrentWidget(i.file_controls)
+         
         self.reload_view(True)
     
     def reload_view(self, auto_range=False):
@@ -136,7 +152,9 @@ class UI:
         
         self.interface.generated_frequency_plot.plot(np.abs(f), pen=pen)
 
-        if(auto_range): self.interface.plot_view.autoRange()
+        if(auto_range):
+            self.interface.generated_time_plot.autoRange()
+            self.interface.generated_frequency_plot.autoRange()
     
     # Called when a new file is opened
     def open_file(self):
