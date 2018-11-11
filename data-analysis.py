@@ -143,9 +143,10 @@ class UI:
         f = QFileDialog.getOpenFileName(filter="*.txt")
         data = np.loadtxt(f[0])
 
-        # Currently hardcoded: 1ms sample rate
-        # Improvement: read time data from differenct column, configurable sample rate
-        time = np.linspace(0, len(data)*1e-3, len(data))
+        sample_time_text = self.interface.sample_time_edit.text()
+        sample_time = string_to_float(sample_time_text, 1e-3)
+        
+        time = np.linspace(0, len(data)*sample_time, len(data))
         
         self.signal_data = SignalData(time, data)
         self.reload_view()
