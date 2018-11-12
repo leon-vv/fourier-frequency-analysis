@@ -1,15 +1,16 @@
 import sys
+import time
 from math import pi
 
 # Names are already prefixed with Q
 from PyQt5.QtWidgets import QApplication, QMainWindow, QFileDialog, QLineEdit
 import pyqtgraph as pg
 import numpy as np
+
 import interface
-get_ipython().run_line_magic('pylab', 'inline')
+
 import nidaqmx as dx
-import matplotlib.pyplot as plt
-from scipy import optimize, signal
+from scipy import signal
 
 
 # Utility function
@@ -60,7 +61,7 @@ class SignalData:
 class SineData(SignalData):
     def __init__(self, noise_mean = 0, noise_sigma = 0.1, amplitude=1, frequency=1, eindtijd=1):
         amplitude = amplitude
-        frequencies= [frequency]
+        
         time_data = np.linspace(0, eindtijd,1000)
         signal_data = amplitude*np.sin(time_data*2*np.pi*frequency)
         signal_data += np.random.normal(noise_mean, noise_sigma, len(time_data))
@@ -116,24 +117,25 @@ class UI:
         
     def write_data(self):
         with dx.Task() as writeTask: #create a task
-     
-        writeTask.ao_channels.add_ao_voltage_chan('myDAQ1/ao0')
-        max_time = self.get_endtime()
-        rate = self.get_samples_per_second()
-        samples = self.get_number_of_samples()
-     
-        # Optionally, one can first set-up the internal clock of the MYDAQ. The commented line below does exactly this
-        writeTask.timing.cfg_samp_clk_timing(rate, sample_mode = dx.constants.AcquisitionType.FINITE, samps_per_chan=long(samples))   
-        writeTask.write(self.signal_data.get_signal_data(),auto_start=True) # also starts automatically
+        
+            writeTask.ao_channels.add_ao_voltage_chan('myDAQ1/ao0')
+            max_time = self.signal_data.get_endtime()
+            rate = self.signal_data.get_samples_per_second()
+            samples = self.signal_data.get_number_of_samples()
          
-        with dx.Task() as readTask:
-            readTask.ai_channels.add_ai_voltage_chan("myDAQ1/ai1", units=dx.constants.VoltageUnits.VOLTS)
-            readTask.timing.cfg_samp_clk_timing(rate, sample_mode = dx.constants.AcquisitionType.FINITE, samps_per_chan=long(samples))  
-            values = readTask.read(number_of_samples_per_channel=samples)
-            self.incoming_signal = SignalData(self.signal_data.get_time_data(), values)
+            # Optionally, one can first set-up the internal clock of the MYDAQ. The commented line below does exactly this
+            writeTask.timing.cfg_samp_clk_timing(rate, sample_mode = dx.constants.AcquisitionType.FINITE, samps_per_chan=samples)   
+            writeTask.write(self.signal_data.get_signal_data(),auto_start=True) # also starts automatically
+             
+            with dx.Task() as readTask:
+                readTask.ai_channels.add_ai_voltage_chan("myDAQ1/ai1", units=dx.constants.VoltageUnits.VOLTS)
+                
+                readTask.timing.cfg_samp_clk_timing(rate, sample_mode = dx.constants.AcquisitionType.FINITE, samps_per_chan=samples)  
+                values = readTask.read(number_of_samples_per_channel=samples, timeout=10)
+                self.incoming_signal = SignalData(self.signal_data.get_time_data(), values)
             
-        time.sleep(max_time)
-        self.reload_view(True)
+            
+            self.reload_view(True)
  
     def source_changed(self):
 
@@ -175,6 +177,8 @@ class UI:
         
         self.interface.generated_time_plot.clear()
         self.interface.generated_frequency_plot.clear()
+        self.interface.incoming_time_plot.clear()
+        self.interface.incoming_frequency_plot.clear()
         
         pen = pg.mkPen(0.3, width=1)
 
@@ -188,14 +192,14 @@ class UI:
         self.interface.generated_frequency_plot.plot(np.abs(f), pen=pen)
 
         
-        F= self.incoming_data.get_frequencies()
-        
         if self.incoming_signal != None:
+            f = self.incoming_signal.get_frequencies()
+            
             self.interface.incoming_time_plot.plot(
-            	self.incoming_data.time_data,
-                self.incoming_data.signal_data, pen=pen)
-            self.interface.incoming_frequency_plot.plot(
-            	np.abs(F), pen = pen)
+                self.incoming_signal.time_data,
+                self.incoming_signal.signal_data, pen=pen)
+            
+            self.interface.incoming_frequency_plot.plot(np.abs(f), pen = pen)
                     
         if(auto_range):
             self.interface.generated_time_plot.autoRange()
