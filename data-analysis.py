@@ -14,15 +14,19 @@ try:
 except:
     print("Module nidaqmx not imported")
 
-from scipy import signal
+from scipy import signal, optimize
 
 
-# Utility function
+# Utility functions
 def string_to_float(string, default):
     try:
         return float(string)
     except ValueError:
         return default
+
+def mydaq_loaded():
+    return 'dx' in globals()
+
 
 class SignalData:
 
@@ -61,6 +65,34 @@ class SignalData:
     def get_number_of_samples(self):
         return len(self.time_data)
     
+    def mydaq_response(self):
+   
+        if(not mydaq_loaded()): return
+
+        with dx.Task() as writeTask:
+        
+            writeTask.ao_channels.add_ao_voltage_chan('myDAQ1/ao0')
+            max_time = self.signal_data.get_endtime()
+            rate = self.signal_data.get_samples_per_second()
+            samples = self.signal_data.get_number_of_samples()
+        
+            writeTask.timing.cfg_samp_clk_timing(rate,
+                    sample_mode = dx.constants.AcquisitionType.FINITE,
+                    samps_per_chan=samples)   
+
+            writeTask.write(self.signal_data.get_signal_data(),
+                    auto_start=True)
+            
+            with dx.Task() as readTask:
+            
+                readTask.ai_channels.add_ai_voltage_chan("myDAQ1/ai1",
+                        units=dx.constants.VoltageUnits.VOLTS)
+                
+                readTask.timing.cfg_samp_clk_timing(rate,
+                        sample_mode = dx.constants.AcquisitionType.FINITE,
+                        samps_per_chan=samples)  
+
+                return readTask.read(number_of_samples_per_channel=samples, timeout=10)
 
 class SineData(SignalData):
     def __init__(self, noise_mean = 0, noise_sigma = 0.1, amplitude=1, frequency=1, eindtijd=1):
@@ -107,7 +139,9 @@ class UI:
         # Setup callbacks
         self.interface.pick_file_button.clicked.connect(self.open_file)
         self.interface.source_picker.currentIndexChanged.connect(self.source_changed)
-        self.interface.write_button.clicked.connect(self.write_data)
+        self.interface.write_button.clicked.connect(self.write_pe3_data)
+        self.interface.bode_plot_button.clicked.connect(self.make_bode_plot)
+
         # Connect all line edits to method source_changed 
         for k in self.interface.__dict__:
             field = self.interface.__dict__[k]
@@ -118,39 +152,45 @@ class UI:
         self.source_changed()
         self.window.show()
         sys.exit(self.app.exec_())
-        
-    def write_data(self):
-        
-        if('dx' in globals()): # Check if module nidaqmx is loaded
-            with dx.Task() as writeTask:
-            
-                writeTask.ao_channels.add_ao_voltage_chan('myDAQ1/ao0')
-                max_time = self.signal_data.get_endtime()
-                rate = self.signal_data.get_samples_per_second()
-                samples = self.signal_data.get_number_of_samples()
-            
-                writeTask.timing.cfg_samp_clk_timing(rate,
-                        sample_mode = dx.constants.AcquisitionType.FINITE,
-                        samps_per_chan=samples)   
+    
+    def write_pe3_data(self):
+    
+        time = self.signal_data.get_time_data()
+        response = self.signal_data.mydaq_response()
 
-                writeTask.write(self.signal_data.get_signal_data(),
-                        auto_start=True)
-                
-                with dx.Task() as readTask:
-                
-                    readTask.ai_channels.add_ai_voltage_chan("myDAQ1/ai1",
-                            units=dx.constants.VoltageUnits.VOLTS)
-                    
-                    readTask.timing.cfg_samp_clk_timing(rate,
-                            sample_mode = dx.constants.AcquisitionType.FINITE,
-                            samps_per_chan=samples)  
+        self.incoming_signal = SignalData(time, response)
+        self.reload_pe3_view(True)
 
-                    values = readTask.read(number_of_samples_per_channel=samples, timeout=10)
-                    self.incoming_signal = SignalData(self.signal_data.get_time_data(), values)
-                
-                
-                self.reload_view(True)
- 
+    def make_bode_plot(self):
+    
+        if(not mydaq_loaded()): return
+
+        tof = string_to_float
+        freq_start = tof(self.interface.frequency_start_edit.text(), 10)
+        freq_end = tof(self.interface.frequency_end_edit.text(), 1e3)
+
+        freqs = np.linspace(freq_start, freq_end, 100)
+        amplitudes = []
+        phases = []
+
+        for f in freqs:
+        
+            endtime = 5 / f # 5 whole periods of oscillation
+            sine = SineData(0, 0, 5, f, endtime)
+            
+            time = sine.get_time_data()
+            response = sine.mydaq_response() 
+
+            fit_function = lambda t, A, phase: A * np.sin(2*np.pi*f*t + phase)
+            (A, phase), _ = optimize.curve_fit(fit_function, time, response)
+
+            amplitudes.append(A)
+            phases.append(phase)
+
+        self.interface.magnitude_plot.plot(time, amplitudes)
+        self.interface.phase_plot.plot(time, phases)
+            
+    
     def source_changed(self):
 
         i = self.interface
@@ -182,10 +222,16 @@ class UI:
         else:
             i.controls_stack.setCurrentWidget(i.file_controls)
          
-        self.reload_view(True)
+        self.reload_pe3_view(True)
     
     def reload_view(self, auto_range=False):
-        
+   
+        # PE4 view is only reloaded when the 'Make bode plot' button
+        # is clicked
+        if(self.interface.tabs.currentIndex() == 0): self.reload_pe3_view(auto_range)
+    
+    
+    def reload_pe3_view(self, auto_range=False):
         if self.signal_data == None:
             return
         
