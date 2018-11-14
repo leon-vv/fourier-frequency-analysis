@@ -9,7 +9,11 @@ import numpy as np
 
 import interface
 
-import nidaqmx as dx
+try:
+    import nidaqmx as dx
+except:
+    print("Module nidaqmx not imported")
+
 from scipy import signal
 
 
@@ -116,26 +120,36 @@ class UI:
         sys.exit(self.app.exec_())
         
     def write_data(self):
-        with dx.Task() as writeTask: #create a task
         
-            writeTask.ao_channels.add_ao_voltage_chan('myDAQ1/ao0')
-            max_time = self.signal_data.get_endtime()
-            rate = self.signal_data.get_samples_per_second()
-            samples = self.signal_data.get_number_of_samples()
-         
-            # Optionally, one can first set-up the internal clock of the MYDAQ. The commented line below does exactly this
-            writeTask.timing.cfg_samp_clk_timing(rate, sample_mode = dx.constants.AcquisitionType.FINITE, samps_per_chan=samples)   
-            writeTask.write(self.signal_data.get_signal_data(),auto_start=True) # also starts automatically
-             
-            with dx.Task() as readTask:
-                readTask.ai_channels.add_ai_voltage_chan("myDAQ1/ai1", units=dx.constants.VoltageUnits.VOLTS)
+        if('dx' in globals()): # Check if module nidaqmx is loaded
+            with dx.Task() as writeTask:
+            
+                writeTask.ao_channels.add_ao_voltage_chan('myDAQ1/ao0')
+                max_time = self.signal_data.get_endtime()
+                rate = self.signal_data.get_samples_per_second()
+                samples = self.signal_data.get_number_of_samples()
+            
+                writeTask.timing.cfg_samp_clk_timing(rate,
+                        sample_mode = dx.constants.AcquisitionType.FINITE,
+                        samps_per_chan=samples)   
+
+                writeTask.write(self.signal_data.get_signal_data(),
+                        auto_start=True)
                 
-                readTask.timing.cfg_samp_clk_timing(rate, sample_mode = dx.constants.AcquisitionType.FINITE, samps_per_chan=samples)  
-                values = readTask.read(number_of_samples_per_channel=samples, timeout=10)
-                self.incoming_signal = SignalData(self.signal_data.get_time_data(), values)
-            
-            
-            self.reload_view(True)
+                with dx.Task() as readTask:
+                
+                    readTask.ai_channels.add_ai_voltage_chan("myDAQ1/ai1",
+                            units=dx.constants.VoltageUnits.VOLTS)
+                    
+                    readTask.timing.cfg_samp_clk_timing(rate,
+                            sample_mode = dx.constants.AcquisitionType.FINITE,
+                            samps_per_chan=samples)  
+
+                    values = readTask.read(number_of_samples_per_channel=samples, timeout=10)
+                    self.incoming_signal = SignalData(self.signal_data.get_time_data(), values)
+                
+                
+                self.reload_view(True)
  
     def source_changed(self):
 
