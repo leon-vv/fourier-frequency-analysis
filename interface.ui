@@ -113,7 +113,7 @@
                  </sizepolicy>
                 </property>
                 <property name="currentIndex">
-                 <number>1</number>
+                 <number>0</number>
                 </property>
                 <widget class="QWidget" name="sine_controls">
                  <layout class="QFormLayout" name="formLayout_4">
@@ -139,7 +139,7 @@
                    </widget>
                   </item>
                   <item row="1" column="1">
-                   <widget class="QLineEdit" name="frequency_edit">
+                   <widget class="QLineEdit" name="endtime_edit">
                     <property name="text">
                      <string>1</string>
                     </property>
@@ -153,7 +153,7 @@
                    </widget>
                   </item>
                   <item row="2" column="1">
-                   <widget class="QLineEdit" name="endtime_edit">
+                   <widget class="QLineEdit" name="frequency_edit">
                     <property name="text">
                      <string>1</string>
                     </property>
@@ -233,27 +233,17 @@
                     </property>
                    </widget>
                   </item>
-                  <item row="2" column="0">
-                   <widget class="QLabel" name="label_9">
-                    <property name="text">
-                     <string>Sigma</string>
-                    </property>
-                   </widget>
+                  <item row="1" column="1">
+                   <widget class="QLineEdit" name="delta_amplitude"/>
                   </item>
-                  <item row="3" column="0">
+                  <item row="2" column="0">
                    <widget class="QLabel" name="label_12">
                     <property name="text">
                      <string>End Time (s)</string>
                     </property>
                    </widget>
                   </item>
-                  <item row="1" column="1">
-                   <widget class="QLineEdit" name="delta_amplitude"/>
-                  </item>
                   <item row="2" column="1">
-                   <widget class="QLineEdit" name="delta_sigma"/>
-                  </item>
-                  <item row="3" column="1">
                    <widget class="QLineEdit" name="delta_end_time"/>
                   </item>
                  </layout>
