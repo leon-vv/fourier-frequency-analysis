@@ -36,9 +36,7 @@ class SignalData:
         return 1/N * np.sum([d[n] * np.exp(-2* pi * 1j * freq * n / float(N)) for n in range(0, N)])
 
     def __init__(self, time_data, signal_data):
-
-        assert len(time_data) == len(signal_data)
-
+        
         self.time_data = time_data
         
         self.signal_data = signal_data
@@ -70,35 +68,56 @@ class SignalData:
         if(not mydaq_loaded()): return
 
         with dx.Task() as writeTask:
-        
-            writeTask.ao_channels.add_ao_voltage_chan('myDAQ1/ao0')
-            
-            rate = self.get_samples_per_second()
-            samples = self.get_number_of_samples()
-        
-            writeTask.timing.cfg_samp_clk_timing(rate,
-                    sample_mode = dx.constants.AcquisitionType.FINITE,
-                    samps_per_chan=samples)   
-
-            writeTask.write(self.signal_data,
-                    auto_start=True)
-            
             with dx.Task() as readTask:
-            
+                writeTask.ao_channels.add_ao_voltage_chan('myDAQ1/ao0')
+                
+                rate = self.get_samples_per_second()
+                
+                """
+                delay = 150e-3
+                extra_samples = np.zeros(int(rate * delay))
+                
+                to_write = np.append(
+                        np.append(extra_samples, self.signal_data),
+                        extra_samples)
+                """
+                to_write = self.signal_data
+                
+                writeTask.timing.cfg_samp_clk_timing(rate,
+                        sample_mode = dx.constants.AcquisitionType.FINITE,
+                        samps_per_chan=len(to_write))
+                
                 readTask.ai_channels.add_ai_voltage_chan("myDAQ1/ai1",
                         units=dx.constants.VoltageUnits.VOLTS)
                 
+                samples_to_read = len(self.signal_data)
+                
                 readTask.timing.cfg_samp_clk_timing(rate,
-                        sample_mode = dx.constants.AcquisitionType.FINITE,
-                        samps_per_chan=samples)  
-
-                return readTask.read(number_of_samples_per_channel=samples, timeout=10)
-
+                        sample_mode = dx.constants.AcquisitionType.CONTINUOUS)
+                
+                readTask.start()
+                
+                writeTask.write(to_write, auto_start=True)
+                
+                response = readTask.read(number_of_samples_per_channel=5*samples_to_read, timeout=10)
+                
+                # First index bigger than 0.1
+                start_index = np.argmax(np.abs(response) > 0.1) 
+                
+                return response[start_index:start_index + samples_to_read]
+                
+    def get_response_time_data(self):
+        rate = self.get_samples_per_second()
+        l = len(self.signal_data)
+        
+        return np.linspace(0, l / rate, l)
+    
+    
 class SineData(SignalData):
     def __init__(self, noise_mean = 0, noise_sigma = 0.1, amplitude=1, frequency=1, eindtijd=1):
         amplitude = amplitude
         
-        time_data = np.linspace(0, eindtijd,1000)
+        time_data = np.linspace(0, eindtijd, 100)
         signal_data = amplitude*np.sin(time_data*2*np.pi*frequency)
         signal_data += np.random.normal(noise_mean, noise_sigma, len(time_data))
         
@@ -155,7 +174,7 @@ class UI:
     
     def write_pe3_data(self):
     
-        time = self.signal_data.get_time_data()
+        time = self.signal_data.get_response_time_data()
         response = self.signal_data.mydaq_response()
 
         self.incoming_signal = SignalData(time, response)
@@ -167,7 +186,7 @@ class UI:
 
         tof = string_to_float
         freq_start = tof(self.interface.frequency_start_edit.text(), 10)
-        freq_end = tof(self.interface.frequency_end_edit.text(), 1e3)
+        freq_end = tof(self.interface.frequency_end_edit.text(), 400)
 
         freqs = np.linspace(freq_start, freq_end, 10)
         input_amplitude = 5
@@ -176,7 +195,7 @@ class UI:
 
         for f in freqs:
         
-            endtime = 1 # 5 whole periods of oscillation
+            endtime = 5 / f # 5 whole periods of oscillation
             sine = SineData(0, 0, input_amplitude, f, endtime)
             
             time = sine.get_time_data()
