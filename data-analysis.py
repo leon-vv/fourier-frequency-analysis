@@ -29,18 +29,14 @@ def mydaq_loaded():
 
 class SignalData:
 
-    def fourier_analysis(self, freq):
-        d = self.signal_data
-        N = len(d)
-        return 1/N * np.sum([d[n] * np.exp(-2*np.pi * 1j * freq * n / float(N)) for n in range(0, N)])
-
     def __init__(self, time_data, signal_data):
         
         self.time_data = time_data
         
         self.signal_data = signal_data
 
-        self.freqs = 1/len(signal_data)* np.fft.fft(signal_data) # [self.fourier_analysis(n) for n in range(0, len(signal_data))]
+        self.freqs_values = 1/len(signal_data)* np.fft.fft(signal_data)
+        self.freqs = np.fft.fftfreq(len(signal_data))
     
     def get_time_data(self):
         return self.time_data
@@ -52,7 +48,7 @@ class SignalData:
         return self.signal_data
     
     def get_frequencies(self):
-        return self.freqs
+        return (self.freqs, self.freqs_values)
         
     def get_samples_per_second(self):
         difference = self.time_data[1]-self.time_data[0]
@@ -312,18 +308,19 @@ class UI:
                 self.signal_data.time_data,
                 self.signal_data.signal_data,
                 pen=pen)
-        f = self.signal_data.get_frequencies()
+
+        (f, f_values) = self.signal_data.get_frequencies()
         
-        self.interface.generated_frequency_plot.plot(np.abs(f), pen=pen)
+        self.interface.generated_frequency_plot.plot(f, np.abs(f_values), pen=pen)
 
         if self.incoming_signal != None:
-            f = self.incoming_signal.get_frequencies()
+            (f, f_values) = self.incoming_signal.get_frequencies()
             
             self.interface.incoming_time_plot.plot(
                 self.incoming_signal.time_data,
                 self.incoming_signal.signal_data, pen=pen)
             
-            self.interface.incoming_frequency_plot.plot(np.abs(f), pen = pen)
+            self.interface.incoming_frequency_plot.plot(f, np.abs(f_values), pen=pen)
         
         if self.fitted_data != None:
             self.interface.incoming_time_plot.plot(
