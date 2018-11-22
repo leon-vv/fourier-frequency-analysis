@@ -10,12 +10,13 @@ import numpy as np
 import interface
 from scipy import signal, optimize
 
-
 try:
     import nidaqmx as dx
 except:
     print("Module nidaqmx not imported")
 
+# Number of samples to take whenever generating a signal
+SAMPLE_NUM = 1000
 
 # Utility functions
 def string_to_float(string, default):
