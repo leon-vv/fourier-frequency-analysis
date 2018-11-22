@@ -1,6 +1,6 @@
 import sys
 import time
-from math import pi
+import math
 
 # Names are already prefixed with Q
 from PyQt5.QtWidgets import QApplication, QMainWindow, QFileDialog, QLineEdit
@@ -88,9 +88,15 @@ class SignalData:
                 
                 writeTask.write(self.signal_data, auto_start=True)
                 
-                response = readTask.read(number_of_samples_per_channel=2*N, timeout=dx.constants.WAIT_INFINITELY)
+                # To make sure we read all the samples written, read half a second longer
+                extra_samples_to_read = math.ceil(500e-3 * rate) 
+
+                response = readTask.read(
+                        number_of_samples_per_channel= N + extra_samples_to_read,
+                        timeout=dx.constants.WAIT_INFINITELY)
                 
                 # First index bigger than 0.1
+                # Returns 0 if no value is larger than 0.1 volts
                 start_index = np.argmax(np.abs(response) > 0.1) 
                 
                 response = response[start_index:start_index + N]
