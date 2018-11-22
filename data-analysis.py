@@ -160,11 +160,10 @@ class UI:
 
     def __init__(self):
     
-         # Config
+         # Plot view config
         pg.setConfigOption('background', 'w')
         pg.setConfigOption('foreground', 'k')
         
-
         # Init window
         self.app = QApplication(sys.argv)
         self.window = QMainWindow() 
@@ -176,7 +175,6 @@ class UI:
         self.fitted_data = None
         
         # Set plot labels
-        
         self.interface.generated_time_plot.setLabel('left', 'Voltage', 'V')
         self.interface.generated_time_plot.setLabel('bottom', 'time', 's')
         self.interface.generated_frequency_plot.setLabel('left', 'Amplitude')
@@ -190,7 +188,6 @@ class UI:
         self.interface.phase_plot.setLabel('left', 'Phase', 'rad')
         self.interface.phase_plot.setLabel('bottom', 'Frequency', 'Hz')
         
-
         # Setup event callbacks
         self.interface.pick_file_button.clicked.connect(self.open_file)
         self.interface.source_picker.currentIndexChanged.connect(self.source_changed)
@@ -202,6 +199,8 @@ class UI:
             field = self.interface.__dict__[k]
             if isinstance(field, QLineEdit):
                 field.editingFinished.connect(self.source_changed)
+        
+        self.interface.bode_progress.setVisible(False)
         
         # Wait for window to close
         self.source_changed()
@@ -233,7 +232,13 @@ class UI:
         freq_start = tof(self.interface.frequency_start_edit.text(), 10)
         freq_end = tof(self.interface.frequency_end_edit.text(), 400)
 
-        freqs = np.linspace(freq_start, freq_end, 25)
+        number_of_freqs = 25 # number of values on x axis
+        
+        self.interface.bode_progress.reset()
+        self.interface.bode_progress.setRange(0, number_of_freqs)
+        self.interface.bode_progress.setVisible(True)
+
+        freqs = np.linspace(freq_start, freq_end, number_of_freqs)
         input_amplitude = 5
         amplitudes = []
         phases = []
@@ -249,9 +254,11 @@ class UI:
 
             amplitudes.append(A)
             phases.append(phase)
+            self.bode_progess.setValue(len(amplitudes))
 
         amplitudes = np.array(amplitudes) / input_amplitude
 
+        self.interface.bode_progress.setVisible(False)
         self.interface.amplitude_plot.plot(freqs, amplitudes, pen=None, symbolSize=6, symbol='o')
         self.interface.phase_plot.plot(freqs, phases, pen=None, symbolSize=6, symbol='o')
     
