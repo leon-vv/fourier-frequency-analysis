@@ -8,13 +8,13 @@ import pyqtgraph as pg
 import numpy as np
 
 import interface
+from scipy import signal, optimize
+
 
 try:
     import nidaqmx as dx
 except:
     print("Module nidaqmx not imported")
-
-from scipy import signal, optimize
 
 
 # Utility functions
@@ -147,7 +147,23 @@ class UI:
         self.incoming_signal = None
         self.interface.setupUi(self.window)
         
-        # Setup callbacks
+        # Set plot labels
+        
+        self.interface.generated_time_plot.setLabel('left', 'Voltage', 'V')
+        self.interface.generated_time_plot.setLabel('bottom', 'time', 's')
+        self.interface.generated_frequency_plot.setLabel('left', 'Amplitude')
+        self.interface.generated_frequency_plot.setLabel('bottom', 'frequency', 'Hz')
+        self.interface.incoming_time_plot.setLabel('left', 'Voltage', 'V')
+        self.interface.incoming_time_plot.setLabel('bottom', 'time', 's')
+        self.interface.incoming_frequency_plot.setLabel('left', 'Amplitude')
+        self.interface.incoming_frequency_plot.setLabel('bottom', 'frequency', 'Hz')
+        self.interface.amplitude_plot.setLabel('left', 'Amplitude')
+        self.interface.amplitude_plot.setLabel('bottom', 'Frequency', 'Hz')
+        self.interface.phase_plot.setLabel('left', 'Phase', 'rad')
+        self.interface.phase_plot.setLabel('bottom', 'Frequency', 'Hz')
+        
+
+        # Setup event callbacks
         self.interface.pick_file_button.clicked.connect(self.open_file)
         self.interface.source_picker.currentIndexChanged.connect(self.source_changed)
         self.interface.write_button.clicked.connect(self.write_pe3_data)
@@ -239,15 +255,9 @@ class UI:
          
         self.reload_pe3_view(True)
     
-    def reload_view(self, auto_range=False):
-   
-        # PE4 view is only reloaded when the 'Make bode plot' button
-        # is clicked
-        if(self.interface.tabs.currentIndex() == 0): self.reload_pe3_view(auto_range)
-    
-    
     def reload_pe3_view(self, auto_range=False):
-        if self.signal_data == None:
+    
+        if self.signal_data == None or self.interface.tabs.currentIndex() != 0:
             return
         
         self.interface.generated_time_plot.clear()
@@ -293,6 +303,6 @@ class UI:
         time = np.linspace(0, len(data)*sample_time, len(data))
         
         self.signal_data = SignalData(time, data)
-        self.reload_view()
+        self.reload_pe3_view()
 
 UI()
