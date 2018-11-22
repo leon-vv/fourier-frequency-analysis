@@ -73,14 +73,6 @@ class SignalData:
                 
                 rate = self.get_samples_per_second()
                 
-                """
-                delay = 150e-3
-                extra_samples = np.zeros(int(rate * delay))
-                
-                to_write = np.append(
-                        np.append(extra_samples, self.signal_data),
-                        extra_samples)
-                """
                 to_write = self.signal_data
                 
                 writeTask.timing.cfg_samp_clk_timing(rate,
@@ -99,7 +91,7 @@ class SignalData:
                 
                 writeTask.write(to_write, auto_start=True)
                 
-                response = readTask.read(number_of_samples_per_channel=5*samples_to_read, timeout=10)
+                response = readTask.read(number_of_samples_per_channel=2*samples_to_read, timeout=dx.constants.WAIT_INFINITELY)
                 
                 # First index bigger than 0.1
                 start_index = np.argmax(np.abs(response) > 0.1) 
@@ -117,7 +109,7 @@ class SineData(SignalData):
     def __init__(self, noise_mean = 0, noise_sigma = 0.1, amplitude=1, frequency=1, eindtijd=1):
         amplitude = amplitude
         
-        time_data = np.linspace(0, eindtijd, 100)
+        time_data = np.linspace(0, eindtijd, 2000)
         signal_data = amplitude*np.sin(time_data*2*np.pi*frequency)
         signal_data += np.random.normal(noise_mean, noise_sigma, len(time_data))
         
@@ -183,12 +175,15 @@ class UI:
     def make_bode_plot(self):
     
         if(not mydaq_loaded()): return
-
+        
+        self.interface.amplitude_plot.clear()
+        self.interface.phase_plot.clear()
+        
         tof = string_to_float
         freq_start = tof(self.interface.frequency_start_edit.text(), 10)
         freq_end = tof(self.interface.frequency_end_edit.text(), 400)
 
-        freqs = np.linspace(freq_start, freq_end, 10)
+        freqs = np.linspace(freq_start, freq_end, 25)
         input_amplitude = 5
         amplitudes = []
         phases = []
@@ -202,13 +197,13 @@ class UI:
             response = sine.mydaq_response() 
 
             fit_function = lambda t, A, phase: A * np.sin(2*np.pi*f*t + phase)
-            (A, phase), _ = optimize.curve_fit(fit_function, time, response, bounds=([0, -np.pi], [np.inf, np.pi]))
+            (A, phase), _ = optimize.curve_fit(fit_function, time, response, bounds=([0, 0], [np.inf, np.pi]))
 
             amplitudes.append(A)
             phases.append(phase)
 
-        self.interface.amplitude_plot.plot(freqs, np.array(amplitudes) / input_amplitude)
-        self.interface.phase_plot.plot(freqs, phases)
+        self.interface.amplitude_plot.plot(freqs, np.array(amplitudes) / input_amplitude, pen=None, symbolSize=6, symbol='o')
+        self.interface.phase_plot.plot(freqs, phases, pen=None, symbolSize=6, symbol='o')
             
     
     def source_changed(self):
