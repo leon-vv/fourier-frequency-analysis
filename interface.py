@@ -390,7 +390,7 @@ class Ui_MainWindow(object):
         self.label_8.setText(_translate("MainWindow", "Mean Noise"))
         self.mean_edit.setText(_translate("MainWindow", "0"))
         self.label_10.setText(_translate("MainWindow", "Deviation Noise"))
-        self.deviation_edit.setText(_translate("MainWindow", "0.1"))
+        self.deviation_edit.setText(_translate("MainWindow", "0.0"))
         self.label_11.setText(_translate("MainWindow", "Sample Time (s)"))
         self.label_4.setText(_translate("MainWindow", "Pick file"))
         self.pick_file_button.setText(_translate("MainWindow", "..."))
