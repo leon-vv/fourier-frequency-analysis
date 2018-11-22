@@ -206,8 +206,7 @@ class UI:
     
     def write_pe3_data(self):
      
-        self.incoming_signal = SineData(0, .3, 2, 1, 3, 2.5)
-        # self.signal_data.mydaq_response()
+        self.incoming_signal = self.signal_data.mydaq_response()
         
         if(isinstance(self.signal_data, SineData)):
             f = self.signal_data.get_base_frequency()
