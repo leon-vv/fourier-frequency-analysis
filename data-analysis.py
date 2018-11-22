@@ -27,7 +27,6 @@ def string_to_float(string, default):
 def mydaq_loaded():
     return 'dx' in globals()
 
-
 class SignalData:
 
     def fourier_analysis(self, freq):
@@ -73,38 +72,43 @@ class SignalData:
                 
                 rate = self.get_samples_per_second()
                 
-                to_write = self.signal_data
+                N = len(self.signal_data)
                 
                 writeTask.timing.cfg_samp_clk_timing(rate,
                         sample_mode = dx.constants.AcquisitionType.FINITE,
-                        samps_per_chan=len(to_write))
+                        samps_per_chan=N)
                 
                 readTask.ai_channels.add_ai_voltage_chan("myDAQ1/ai1",
                         units=dx.constants.VoltageUnits.VOLTS)
-                
-                samples_to_read = len(self.signal_data)
                 
                 readTask.timing.cfg_samp_clk_timing(rate,
                         sample_mode = dx.constants.AcquisitionType.CONTINUOUS)
                 
                 readTask.start()
                 
-                writeTask.write(to_write, auto_start=True)
+                writeTask.write(self.signal_data, auto_start=True)
                 
-                response = readTask.read(number_of_samples_per_channel=2*samples_to_read, timeout=dx.constants.WAIT_INFINITELY)
+                response = readTask.read(number_of_samples_per_channel=2*N, timeout=dx.constants.WAIT_INFINITELY)
                 
                 # First index bigger than 0.1
                 start_index = np.argmax(np.abs(response) > 0.1) 
                 
-                return response[start_index:start_index + samples_to_read]
+                response = response[start_index:start_index + N]
                 
-    def get_response_time_data(self):
-        rate = self.get_samples_per_second()
-        l = len(self.signal_data)
+                return SignalData(np.linspace(0, N/rate, N), response)
+ 
+    def get_amplitude_and_phase(self, frequency):
+    
+        fit_function = lambda t, A, phase: A * np.sin(2*np.pi*frequency*t + phase)
+         
+        parameters, _ = optimize.curve_fit(fit_function,
+                self.time_data,
+                self.signal_data,
+                bounds=([0, 0], [np.inf, np.pi]))
         
-        return np.linspace(0, l / rate, l)
-    
-    
+        return parameters
+ 
+
 class SineData(SignalData):
     def __init__(self, noise_mean = 0, noise_sigma = 0.1, amplitude=1, frequency=1, eindtijd=1):
         amplitude = amplitude
@@ -115,6 +119,7 @@ class SineData(SignalData):
         
         SignalData.__init__(self, time_data, signal_data)
     
+
 class GaussData(SignalData):
     def __init__(self, amplitude, sigma, end_time):
         time_data = np.linspace(0, end_time, 1000)
@@ -181,13 +186,10 @@ class UI:
         sys.exit(self.app.exec_())
     
     def write_pe3_data(self):
-    
-        time = self.signal_data.get_response_time_data()
-        response = self.signal_data.mydaq_response()
-
-        self.incoming_signal = SignalData(time, response)
+     
+        self.incoming_signal = self.signal_data.mydaq_response()
         self.reload_pe3_view(True)
-
+    
     def make_bode_plot(self):
     
         if(not mydaq_loaded()): return
@@ -206,21 +208,20 @@ class UI:
 
         for f in freqs:
         
+            self.app.processEvents() # Prevent UI from hanging
+
             endtime = 5 / f # 5 whole periods of oscillation
             sine = SineData(0, 0, input_amplitude, f, endtime)
             
-            time = sine.get_time_data()
-            response = sine.mydaq_response() 
-
-            fit_function = lambda t, A, phase: A * np.sin(2*np.pi*f*t + phase)
-            (A, phase), _ = optimize.curve_fit(fit_function, time, response, bounds=([0, 0], [np.inf, np.pi]))
+            (A, phase) = sine.mydaq_response().get_amplitude_and_phase(f)
 
             amplitudes.append(A)
             phases.append(phase)
 
-        self.interface.amplitude_plot.plot(freqs, np.array(amplitudes) / input_amplitude, pen=None, symbolSize=6, symbol='o')
+        amplitudes = np.array(amplitudes) / input_amplitude
+
+        self.interface.amplitude_plot.plot(freqs, amplitudes, pen=None, symbolSize=6, symbol='o')
         self.interface.phase_plot.plot(freqs, phases, pen=None, symbolSize=6, symbol='o')
-            
     
     def source_changed(self):
 
