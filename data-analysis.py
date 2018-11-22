@@ -32,7 +32,7 @@ class SignalData:
     def fourier_analysis(self, freq):
         d = self.signal_data
         N = len(d)
-        return 1/N * np.sum([d[n] * np.exp(-2* pi * 1j * freq * n / float(N)) for n in range(0, N)])
+        return 1/N * np.sum([d[n] * np.exp(-2*np.pi * 1j * freq * n / float(N)) for n in range(0, N)])
 
     def __init__(self, time_data, signal_data):
         
@@ -44,6 +44,9 @@ class SignalData:
     
     def get_time_data(self):
         return self.time_data
+
+    def get_end_time(self):
+        return self.time_data[-1]
 
     def get_signal_data(self):
         return self.signal_data
@@ -116,16 +119,28 @@ class SignalData:
  
 
 class SineData(SignalData):
-    def __init__(self, noise_mean = 0, noise_sigma = 0.1, amplitude=1, frequency=1, eindtijd=1):
-        amplitude = amplitude
+    def __init__(self,
+            noise_mean = 0,
+            noise_sigma = 0.1,
+            amplitude=1,
+            frequency=1,
+            endtime=1,
+            phase = 0):
+
+        self.frequency = frequency
         
-        time_data = np.linspace(0, eindtijd, 2000)
-        signal_data = amplitude*np.sin(time_data*2*np.pi*frequency)
+        time_data = np.linspace(0, endtime, 1000)
+        signal_data = amplitude*np.sin(time_data*2*np.pi*frequency + phase)
         signal_data += np.random.normal(noise_mean, noise_sigma, len(time_data))
         
         SignalData.__init__(self, time_data, signal_data)
-    
 
+    # Get the 'base' frequency. The frequency
+    # of the sine wave disregarding the noise
+    def get_base_frequency(self):
+        return self.frequency
+    
+      
 class GaussData(SignalData):
     def __init__(self, amplitude, sigma, end_time):
         time_data = np.linspace(0, end_time, 1000)
@@ -149,14 +164,16 @@ class UI:
         pg.setConfigOption('background', 'w')
         pg.setConfigOption('foreground', 'k')
         
-        self.signal_data = None
 
         # Init window
         self.app = QApplication(sys.argv)
         self.window = QMainWindow() 
         self.interface = interface.Ui_MainWindow()
-        self.incoming_signal = None
         self.interface.setupUi(self.window)
+
+        self.signal_data = None
+        self.incoming_signal = None
+        self.fitted_data = None
         
         # Set plot labels
         
@@ -193,7 +210,16 @@ class UI:
     
     def write_pe3_data(self):
      
-        self.incoming_signal = self.signal_data.mydaq_response()
+        self.incoming_signal = SineData(0, .3, 2, 1, 3, 2.5)
+        # self.signal_data.mydaq_response()
+        
+        if(isinstance(self.signal_data, SineData)):
+            f = self.signal_data.get_base_frequency()
+            (A, phase) = self.incoming_signal.get_amplitude_and_phase(f)
+            end_time = self.signal_data.get_end_time()
+
+            self.fitted_data = SineData(0, 0, A, f, end_time, phase)
+        
         self.reload_pe3_view(True)
     
     def make_bode_plot(self):
@@ -231,6 +257,7 @@ class UI:
     
     def source_changed(self):
 
+        self.fitted_data = None
         i = self.interface
         tof = string_to_float
         source_text = i.source_picker.currentText()
@@ -280,10 +307,8 @@ class UI:
                 pen=pen)
         f = self.signal_data.get_frequencies()
         
-        
         self.interface.generated_frequency_plot.plot(np.abs(f), pen=pen)
 
-        
         if self.incoming_signal != None:
             f = self.incoming_signal.get_frequencies()
             
@@ -292,7 +317,13 @@ class UI:
                 self.incoming_signal.signal_data, pen=pen)
             
             self.interface.incoming_frequency_plot.plot(np.abs(f), pen = pen)
-                    
+        
+        if self.fitted_data != None:
+            self.interface.incoming_time_plot.plot(
+                    self.fitted_data.time_data,
+                    self.fitted_data.signal_data,
+                    pen=pg.mkPen('r', width=2))
+          
         if(auto_range):
             self.interface.generated_time_plot.autoRange()
             self.interface.incoming_frequency_plot.autoRange()
