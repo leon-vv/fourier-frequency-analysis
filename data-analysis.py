@@ -101,7 +101,7 @@ class SignalData:
                 
                 response = response[start_index:start_index + N]
                 
-                return SignalData(np.linspace(0, N/rate, N), response)
+                return SignalData(np.linspace(0, N/rate, len(response)), response)
  
     def get_amplitude_and_phase(self, frequency):
     
@@ -182,8 +182,10 @@ class UI:
         self.interface.incoming_frequency_plot.setLabel('bottom', 'frequency', 'Hz')
         self.interface.amplitude_plot.setLabel('left', 'Amplitude')
         self.interface.amplitude_plot.setLabel('bottom', 'Frequency', 'Hz')
+        self.interface.amplitude_plot.setLogMode(True, True)
         self.interface.phase_plot.setLabel('left', 'Phase', 'rad')
         self.interface.phase_plot.setLabel('bottom', 'Frequency', 'Hz')
+        self.interface.phase_plot.setLogMode(True, False)
         
         # Setup event callbacks
         self.interface.pick_file_button.clicked.connect(self.open_file)
@@ -234,7 +236,7 @@ class UI:
         self.interface.bode_progress.setRange(0, number_of_freqs)
         self.interface.bode_progress.setVisible(True)
 
-        freqs = np.linspace(freq_start, freq_end, number_of_freqs)
+        freqs = np.geomspace(freq_start, freq_end, number_of_freqs)
         input_amplitude = 5
         amplitudes = []
         phases = []
@@ -250,13 +252,16 @@ class UI:
 
             amplitudes.append(A)
             phases.append(phase)
-            self.bode_progess.setValue(len(amplitudes))
+            self.interface.bode_progress.setValue(len(amplitudes))
 
         amplitudes = np.array(amplitudes) / input_amplitude
 
         self.interface.bode_progress.setVisible(False)
+        
         self.interface.amplitude_plot.plot(freqs, amplitudes, pen=None, symbolSize=6, symbol='o')
         self.interface.phase_plot.plot(freqs, phases, pen=None, symbolSize=6, symbol='o')
+        self.interface.amplitude_plot.autoRange()
+        self.interface.phase_plot.autoRange()
     
     def source_changed(self):
 
