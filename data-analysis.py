@@ -62,10 +62,27 @@ class SignalData:
     def get_number_of_samples(self):
         return len(self.time_data)
     
+    def pull_down_mydaq(self):
+        
+        with dx.Task() as writeTask:
+            rate = 100
+            zeros_to_write = math.ceil(100e-3 * rate)
+            
+            writeTask.ao_channels.add_ao_voltage_chan('myDAQ1/ao0')
+            
+            writeTask.write(np.zeros(zeros_to_write), auto_start=True)
+            
+            writeTask.timing.cfg_samp_clk_timing(rate,
+                        sample_mode = dx.constants.AcquisitionType.FINITE,
+                        samps_per_chan=zeros_to_write)
+                
+            
     def mydaq_response(self):
    
         if(not mydaq_loaded()): return
 
+        self.pull_down_mydaq()
+        
         with dx.Task() as writeTask:
             with dx.Task() as readTask:
                 writeTask.ao_channels.add_ao_voltage_chan('myDAQ1/ao0')
@@ -83,7 +100,7 @@ class SignalData:
                 
                 readTask.timing.cfg_samp_clk_timing(rate,
                         sample_mode = dx.constants.AcquisitionType.CONTINUOUS)
-                
+                                
                 readTask.start()
                 
                 writeTask.write(self.signal_data, auto_start=True)
@@ -99,9 +116,15 @@ class SignalData:
                 # Returns 0 if no value is larger than 0.1 volts
                 start_index = np.argmax(np.abs(response) > 0.1) 
                 
+                # Now try to 'walk' back to zero
+                while (start_index > 0
+                       and response[start_index] > response[start_index - 1]
+                       and response[start_index - 1] > 0):
+                    start_index -= 1
+                
                 response = response[start_index:start_index + N]
                 
-                return SignalData(np.linspace(0, N/rate, len(response)), response)
+                return SignalData(np.linspace(0, len(response)/rate, len(response)), response)
  
     def get_amplitude_and_phase(self, frequency):
     
@@ -190,7 +213,7 @@ class UI:
         self.interface.incoming_frequency_plot.setLabel('bottom', 'frequency', 'Hz')
         self.interface.amplitude_plot.setLabel('left', 'Amplitude')
         self.interface.amplitude_plot.setLabel('bottom', 'Frequency', 'Hz')
-        self.interface.amplitude_plot.setLogMode(True, True)
+        self.interface.amplitude_plot.setLogMode(True, False)
         self.interface.phase_plot.setLabel('left', 'Phase', 'rad')
         self.interface.phase_plot.setLabel('bottom', 'Frequency', 'Hz')
         self.interface.phase_plot.setLogMode(True, False)
@@ -230,7 +253,7 @@ class UI:
             (A, phase) = self.incoming_signal.get_amplitude_and_phase(f)
             end_time = self.signal_data.get_end_time()
 
-            self.fitted_data = SineData(0, 0, A, f, end_time, phase)
+            self.fitted_data = SineData(0, 0, A, f, end_time * f, phase)
         
         self.reload_pe3_view(True)
     
