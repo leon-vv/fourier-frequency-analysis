@@ -16,7 +16,7 @@ except:
     print("Module nidaqmx not imported")
 
 # Number of samples to take whenever generating a signal
-SAMPLE_NUM = 1000
+SAMPLE_NUM = 500
 
 # Utility functions
 def string_to_float(string, default):
@@ -27,6 +27,11 @@ def string_to_float(string, default):
 
 def mydaq_loaded():
     return 'dx' in globals()
+
+def alert(text):
+   msg = QMessageBox()
+   msg.setText(text)
+   msg.exec_()
 
 class SignalData:
 
@@ -89,6 +94,10 @@ class SignalData:
                 
                 rate = self.get_samples_per_second()
                 
+                if(rate > 200000):
+                    alert("Hardware limitations of MyDaq reached: frequency too high")
+                    return None
+                
                 N = len(self.signal_data)
                 
                 writeTask.timing.cfg_samp_clk_timing(rate,
@@ -116,7 +125,7 @@ class SignalData:
                 # Returns 0 if no value is larger than 0.1 volts
                 start_index = np.argmax(np.abs(response) > 0.1) 
                 
-                # Now try to 'walk' back to zero
+                # Now try to 'walk' back to zero to also get first part of signal
                 while (start_index > 0
                        and response[start_index] > response[start_index - 1]
                        and response[start_index - 1] > 0):
@@ -235,11 +244,9 @@ class UI:
         # Wait for window to close
         self.source_changed()
         self.window.show()
-        
-        if(not mydaq_loaded()): 
-            msg = QMessageBox()
-            msg.setText("MyDaq device not found: reading and writing won't work.")
-            msg.exec_()
+                
+        if(not mydaq_loaded()): alert("MyDaq device not found: reading and writing won't work.")
+
         sys.exit(self.app.exec_())
     
     def write_pe3_data(self):
@@ -268,26 +275,31 @@ class UI:
         freq_start = tof(self.interface.frequency_start_edit.text(), 10)
         freq_end = tof(self.interface.frequency_end_edit.text(), 400)
 
-        number_of_freqs = 25 # number of values on x axis
+        number_of_freqs = 15 # number of values on x axis
         
         self.interface.bode_progress.reset()
         self.interface.bode_progress.setRange(0, number_of_freqs)
         self.interface.bode_progress.setVisible(True)
 
         freqs = np.geomspace(freq_start, freq_end, number_of_freqs)
-        input_amplitude = 5
+        input_amplitude = 3
         amplitudes = []
         phases = []
 
         for f in freqs:
         
             self.app.processEvents() # Prevent UI from hanging
-
-            endtime = 5 / f # 5 whole periods of oscillation
-            sine = SineData(0, 0, input_amplitude, f, endtime)
             
-            (A, phase) = sine.mydaq_response().get_amplitude_and_phase(f)
-
+            sine = SineData(0, 0, input_amplitude, f, 4)
+            
+            response = sine.mydaq_response()
+            
+            if(response == None): break
+            
+            time.sleep(0.5)
+            
+            (A, phase) = response.get_amplitude_and_phase(f)
+            
             amplitudes.append(A)
             phases.append(phase)
             self.interface.bode_progress.setValue(len(amplitudes))
@@ -296,8 +308,9 @@ class UI:
 
         self.interface.bode_progress.setVisible(False)
         
-        self.interface.amplitude_plot.plot(freqs, amplitudes, pen=None, symbolSize=6, symbol='o')
-        self.interface.phase_plot.plot(freqs, phases, pen=None, symbolSize=6, symbol='o')
+        N = len(amplitudes)
+        self.interface.amplitude_plot.plot(freqs[:N], amplitudes, pen=None, symbolSize=6, symbol='o')
+        self.interface.phase_plot.plot(freqs[:N], phases, pen=None, symbolSize=6, symbol='o')
         self.interface.amplitude_plot.autoRange()
         self.interface.phase_plot.autoRange()
     
@@ -358,7 +371,7 @@ class UI:
                 self.signal_data.time_data,
                 self.signal_data.signal_data,
                 pen=pen)
-
+        
         (f, f_values) = self.signal_data.get_frequencies()
         
         self.interface.generated_frequency_plot.plot(f, np.abs(f_values), pen=pen)
