@@ -3,7 +3,7 @@ import time
 import math
 
 # Names are already prefixed with Q
-from PyQt5.QtWidgets import QApplication, QMainWindow, QFileDialog, QLineEdit
+from PyQt5.QtWidgets import QMessageBox, QApplication, QMainWindow, QFileDialog, QLineEdit
 import pyqtgraph as pg
 import numpy as np
 
@@ -78,7 +78,7 @@ class SignalData:
                         sample_mode = dx.constants.AcquisitionType.FINITE,
                         samps_per_chan=N)
                 
-                readTask.ai_channels.add_ai_voltage_chan("myDAQ1/ai1",
+                readTask.ai_channels.add_ai_voltage_chan("myDAQ1/ai0",
                         units=dx.constants.VoltageUnits.VOLTS)
                 
                 readTask.timing.cfg_samp_clk_timing(rate,
@@ -117,16 +117,16 @@ class SignalData:
 
 class SineData(SignalData):
     def __init__(self,
-            noise_mean = 0,
-            noise_sigma = 0.1,
-            amplitude=1,
-            frequency=1,
-            endtime=1,
+            noise_mean,
+            noise_sigma,
+            amplitude,
+            frequency,
+            oscillations,
             phase = 0):
 
         self.frequency = frequency
         
-        time_data = np.linspace(0, endtime, 1000)
+        time_data = np.linspace(0, oscillations / frequency, SAMPLE_NUM)
         signal_data = amplitude*np.sin(time_data*2*np.pi*frequency + phase)
         signal_data += np.random.normal(noise_mean, noise_sigma, len(time_data))
         
@@ -140,18 +140,26 @@ class SineData(SignalData):
       
 class GaussData(SignalData):
     def __init__(self, amplitude, sigma, end_time):
-        time_data = np.linspace(0, end_time, 1000)
-        signal_data = amplitude * signal.gaussian(1000, sigma)
+        time_data = np.linspace(0, end_time, SAMPLE_NUM)
+        signal_data = amplitude * signal.gaussian(SAMPLE_NUM, sigma)
 
         SignalData.__init__(self, time_data, signal_data)
 
 class DeltaData(SignalData):
     def __init__(self, amplitude, end_time):
         amplitude = amplitude
-        time_data = np.linspace(0, end_time, 1000)
-        signal_data = amplitude * signal.unit_impulse(1000, idx='mid')
+        time_data = np.linspace(0, end_time, SAMPLE_NUM)
+        signal_data = amplitude * signal.unit_impulse(SAMPLE_NUM, idx='mid')
 
         SignalData.__init__(self, time_data, signal_data)
+
+class SawtoothData(SignalData):
+    def __init__(self, amplitude, oscillations, frequency):
+        time_data = np.linspace(0, oscillations/frequency, SAMPLE_NUM)
+        signal_data = amplitude * signal.sawtooth(2*np.pi*frequency*time_data, width=0.5)
+        
+        return SignalData.__init__(self, time_data, signal_data)
+
 
 class UI:
 
@@ -204,10 +212,17 @@ class UI:
         # Wait for window to close
         self.source_changed()
         self.window.show()
+        
+        if(not mydaq_loaded()): 
+            msg = QMessageBox()
+            msg.setText("MyDaq device not found: reading and writing won't work.")
+            msg.exec_()
         sys.exit(self.app.exec_())
     
     def write_pe3_data(self):
      
+        if(not mydaq_loaded()): return
+        
         self.incoming_signal = self.signal_data.mydaq_response()
         
         if(isinstance(self.signal_data, SineData)):
@@ -275,8 +290,8 @@ class UI:
             deviation = tof(i.deviation_edit.text(), 0.1)
             amplitude = tof(i.amplitude_edit.text(), 1)
             frequency = tof(i.frequency_edit.text(), 5)
-            endtime = tof(i.endtime_edit.text(), 3)
-            self.signal_data = SineData(mean, deviation, amplitude, frequency, endtime)
+            oscillations = tof(i.oscillations_edit.text(), 3)
+            self.signal_data = SineData(mean, deviation, amplitude, frequency, oscillations)
 
             i.controls_stack.setCurrentWidget(i.sine_controls)
         elif source_text == "Gauss":
@@ -292,6 +307,13 @@ class UI:
             self.signal_data = DeltaData(amplitude, endtime)
 
             i.controls_stack.setCurrentWidget(i.delta_controls)
+        elif source_text == "Sawtooth":
+            amplitude = tof(i.sawtooth_amplitude_edit.text(), 1)
+            oscillations = tof(i.sawtooth_oscillations_edit.text(), 3)
+            frequency = tof(i.sawtooth_frequency_edit.text(), 2)
+            self.signal_data = SawtoothData(amplitude, oscillations, frequency)
+            
+            i.controls_stack.setCurrentWidget(i.sawtooth_controls)
         else:
             i.controls_stack.setCurrentWidget(i.file_controls)
          
