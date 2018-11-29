@@ -8,7 +8,6 @@ import pyqtgraph as pg
 import numpy as np
 
 import interface
-import bode_plot
 from scipy import signal, optimize
 
 try:
@@ -68,30 +67,15 @@ class SignalData:
     def get_number_of_samples(self):
         return len(self.time_data)
     
-    def pull_down_mydaq(self):
-        
-        with dx.Task() as writeTask:
-            rate = 100
-            zeros_to_write = math.ceil(100e-3 * rate)
-            
-            writeTask.ao_channels.add_ao_voltage_chan('myDAQ1/ao0')
-            
-            writeTask.write(np.zeros(zeros_to_write), auto_start=True)
-            
-            writeTask.timing.cfg_samp_clk_timing(rate,
-                        sample_mode = dx.constants.AcquisitionType.FINITE,
-                        samps_per_chan=zeros_to_write)
-                
-        
     def mydaq_response(self):
    
         if(not mydaq_loaded()): return
-
-        self.pull_down_mydaq()
         
         with dx.Task() as writeTask:
             with dx.Task() as readTask:
-                writeTask.ao_channels.add_ao_voltage_chan('myDAQ1/ao1')
+                writeTask.ao_channels.add_ao_voltage_chan('myDAQ1/ao0')
+                readTask.ai_channels.add_ai_voltage_chan("myDAQ1/ai0",
+                    units=dx.constants.VoltageUnits.VOLTS)
                 
                 rate = self.get_samples_per_second()
                 
@@ -105,61 +89,31 @@ class SignalData:
                         sample_mode = dx.constants.AcquisitionType.FINITE,
                         samps_per_chan=N)
                 
-                readTask.ai_channels.add_ai_voltage_chan("myDAQ1/ai1",
-                        units=dx.constants.VoltageUnits.VOLTS)
-                
+               
                 readTask.timing.cfg_samp_clk_timing(rate,
+                        source = "ao/SampleClock",
                         sample_mode = dx.constants.AcquisitionType.CONTINUOUS)
                                 
                 readTask.start()
                 
-                print('writing ', self.signal_data)
                 writeTask.write(self.signal_data, auto_start=True)
                 
-                # To make sure we read all the samples written, read half a second longer
-                extra_samples_to_read = math.ceil(500e-3 * rate) 
-
                 response = readTask.read(
-                        number_of_samples_per_channel= N + extra_samples_to_read,
+                        number_of_samples_per_channel= N,
                         timeout=dx.constants.WAIT_INFINITELY)
                 
-                # First index bigger than 0.1
-                # Returns 0 if no value is larger than 0.1 volts
-                start_index = np.argmax(np.abs(response) > 0.1) 
-                
-                # Now try to 'walk' back to zero to also get first part of signal
-                while (start_index > 0
-                       and response[start_index] > response[start_index - 1]
-                       and response[start_index - 1] > 0):
-                    start_index -= 1
-                
-                response = response[start_index:start_index + N]
-                
                 return SignalData(np.linspace(0, len(response)/rate, len(response)), response)
-     
         
     def get_amplitude_and_phase(self, frequency):
     
-        """"fit_function = lambda t, A, phase: A * np.sin(2*np.pi*frequency*t + phase)
+        fit_function = lambda t, A, phase: A * np.sin(2*np.pi*frequency*t + phase)
          
         parameters, _ = optimize.curve_fit(fit_function,
                 self.time_data,
                 self.signal_data,
-                bounds=([0, 0], [np.inf, np.pi]))"""
-                                          
-        rate = self.get_samples_per_second()
-        
-        T = 1/frequency
-        
-        first_part = self.signal_data[0:int(rate * T)]
-        index_of_max = np.argmax(first_part)    
-        
-        print(frequency, T, rate, index_of_max / rate)
-        
-        phase = 2*math.pi*(index_of_max / (rate*T) - 1/4)
-        A = self.signal_data[index_of_max]
-        
-        return (A, phase)
+                bounds=([0, 0], [np.inf, np.pi]))
+
+        return parameters
  
 
 class SineData(SignalData):
@@ -269,16 +223,16 @@ class UI:
         if(not mydaq_loaded()): return
         
         self.incoming_signal = self.signal_data.mydaq_response()
-        """
+
         if(isinstance(self.signal_data, SineData) and self.incoming_signal != None):
             f = self.signal_data.get_base_frequency()
             
             (A, phase) = self.incoming_signal.get_amplitude_and_phase(f)
-            print(A, phase)
+
             end_time = self.signal_data.get_end_time()
 
-            self.fitted_data = SineData(0, 0, A, f, end_time * f, phase)"""
-        
+            self.fitted_data = SineData(0, 0, A, f, end_time * f, phase)
+         
         self.reload_pe3_view(True)
     
     def make_bode_plot(self):
@@ -300,11 +254,30 @@ class UI:
 
         freqs = np.geomspace(freq_start, freq_end, number_of_freqs)
         input_amplitude = 3
+        amplitudes = []
+        phases = []
         
+        for f in freqs:
         
-        phases, amplitudes = bode_plot.get_amplitudes_and_phases(freqs)
-        print(freqs)
-                
+            self.app.processEvents() # Prevent UI from hanging
+            
+            sine = SineData(0, 0, input_amplitude, f, 4)
+            
+            response = sine.mydaq_response()
+            
+            if(response == None): break
+            
+            time.sleep(0.5)
+            
+            (A, phase) = response.get_amplitude_and_phase(f)
+            
+            amplitudes.append(A)
+            phases.append(phase)
+            self.interface.bode_progress.setValue(len(amplitudes))
+
+        amplitudes = np.array(amplitudes) / input_amplitude
+        self.interface.bode_progress.setVisible(False)
+         
         N = len(amplitudes)
         self.interface.amplitude_plot.plot(freqs[:N], amplitudes, pen=None, symbolSize=6, symbol='o')
         self.interface.phase_plot.plot(freqs[:N], phases, pen=None, symbolSize=6, symbol='o')
