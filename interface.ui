@@ -391,14 +391,21 @@
            <item>
             <widget class="QLabel" name="label_23">
              <property name="text">
-              <string>Output port: AO0</string>
+              <string>Output port: AO1</string>
              </property>
             </widget>
            </item>
            <item>
             <widget class="QLabel" name="label_24">
              <property name="text">
-              <string>Input port: AI0</string>
+              <string>Input port: AI1</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLabel" name="label_28">
+             <property name="text">
+              <string>Please short circuit AO0/AI1</string>
              </property>
             </widget>
            </item>

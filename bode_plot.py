@@ -1,5 +1,9 @@
-from nidaqmx.task import Task 
-from nidaqmx import constants 
+try:
+    from nidaqmx.task import Task 
+    from nidaqmx import constants 
+except:
+    pass
+
 from scipy.optimize import curve_fit
 import numpy as np
 
