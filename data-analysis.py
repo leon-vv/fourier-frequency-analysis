@@ -113,7 +113,6 @@ class SignalData:
                                 
                 readTask.start()
                 
-                print('writing ', self.signal_data)
                 writeTask.write(self.signal_data, auto_start=True)
                 
                 # To make sure we read all the samples written, read half a second longer
@@ -136,32 +135,7 @@ class SignalData:
                 response = response[start_index:start_index + N]
                 
                 return SignalData(np.linspace(0, len(response)/rate, len(response)), response)
-     
         
-    def get_amplitude_and_phase(self, frequency):
-    
-        """"fit_function = lambda t, A, phase: A * np.sin(2*np.pi*frequency*t + phase)
-         
-        parameters, _ = optimize.curve_fit(fit_function,
-                self.time_data,
-                self.signal_data,
-                bounds=([0, 0], [np.inf, np.pi]))"""
-                                          
-        rate = self.get_samples_per_second()
-        
-        T = 1/frequency
-        
-        first_part = self.signal_data[0:int(rate * T)]
-        index_of_max = np.argmax(first_part)    
-        
-        print(frequency, T, rate, index_of_max / rate)
-        
-        phase = 2*math.pi*(index_of_max / (rate*T) - 1/4)
-        A = self.signal_data[index_of_max]
-        
-        return (A, phase)
- 
-
 class SineData(SignalData):
     def __init__(self,
             noise_mean,
@@ -224,7 +198,6 @@ class UI:
 
         self.signal_data = None
         self.incoming_signal = None
-        self.fitted_data = None
         
         # Set plot labels
         self.interface.generated_time_plot.setLabel('left', 'Voltage', 'V')
@@ -269,17 +242,12 @@ class UI:
         if(not mydaq_loaded()): return
         
         self.incoming_signal = self.signal_data.mydaq_response()
-        """
-        if(isinstance(self.signal_data, SineData) and self.incoming_signal != None):
-            f = self.signal_data.get_base_frequency()
-            
-            (A, phase) = self.incoming_signal.get_amplitude_and_phase(f)
-            print(A, phase)
-            end_time = self.signal_data.get_end_time()
-
-            self.fitted_data = SineData(0, 0, A, f, end_time * f, phase)"""
-        
+                
         self.reload_pe3_view(True)
+    
+    def update_progess(self, i):
+        self.interface.bode_progress.setValue(i)
+        self.app.processEvents() # Prevent UI from hanging
     
     def make_bode_plot(self):
     
@@ -300,11 +268,11 @@ class UI:
 
         freqs = np.geomspace(freq_start, freq_end, number_of_freqs)
         input_amplitude = 3
-        
-        
-        phases, amplitudes = bode_plot.get_amplitudes_and_phases(freqs)
-        print(freqs)
                 
+        phases, amplitudes = bode_plot.get_amplitudes_and_phases(freqs, self.update_progess)
+                
+        self.interface.bode_progress.setVisible(False)
+
         N = len(amplitudes)
         self.interface.amplitude_plot.plot(freqs[:N], amplitudes, pen=None, symbolSize=6, symbol='o')
         self.interface.phase_plot.plot(freqs[:N], phases, pen=None, symbolSize=6, symbol='o')
@@ -312,8 +280,7 @@ class UI:
         self.interface.phase_plot.autoRange()
     
     def source_changed(self):
-
-        self.fitted_data = None
+    
         i = self.interface
         tof = string_to_float
         source_text = i.source_picker.currentText()
@@ -382,12 +349,6 @@ class UI:
             
             self.interface.incoming_frequency_plot.plot(f, np.abs(f_values), pen=pen)
         
-        if self.fitted_data != None:
-            self.interface.incoming_time_plot.plot(
-                    self.fitted_data.time_data,
-                    self.fitted_data.signal_data,
-                    pen=pg.mkPen('r', width=2))
-          
         if(auto_range):
             self.interface.generated_time_plot.autoRange()
             self.interface.incoming_frequency_plot.autoRange()

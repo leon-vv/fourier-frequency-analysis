@@ -84,8 +84,7 @@ class read_writer():
     
     freqarr = np.logspace(0,3,10)
 
-def get_amplitudes_and_phases(freqarr):
-    freqarr = np.logspace(0,3,10)
+def get_amplitudes_and_phases(freqarr, callback):
 
     duration=3#sec
     sample_rate=90000
@@ -96,19 +95,24 @@ def get_amplitudes_and_phases(freqarr):
     t = np.linspace(0, duration, int(sample_rate*duration))
 
     phases, amps = np.zeros(len(freqarr)),np.zeros(len(freqarr))
+    
     for i, freq in enumerate(freqarr):
+    
+        callback(i)
+        
         data = np.sin(2*np.pi*freq*t)
         obj = read_writer(freq,data, sample_rate, int(sample_rate*duration))
         obj.__start__()
         t_arr, dataread, t0 = obj.__output__()
-
+    
+        callback(i)
+        
         t_shift = int(np.ceil(-t_arr[0]/np.diff(t)[0]))
 
         tofit = np.where((t_arr>1)*(t_arr<2))[0]
-        popt,pcov = curve_fit(fitter, t_arr[tofit], dataread[tofit]/np.max(dataread[tofit]), p0=[0], maxfev=int(1e6))
+        popt,pcov = curve_fit(fitter, t_arr[tofit], dataread[tofit]/np.max(dataread[tofit]), p0=[0], maxfev=int(1e6), bounds=(0, np.pi))
         recovered_phase_shift = popt[0]
-
-        print("t0: ", np.round(t0,5), " phi: ", np.round(recovered_phase_shift,2), "rad amp: ", np.round(np.max(dataread)/np.max(data),2))
+        
         phases[i], amps[i] = recovered_phase_shift, np.max(dataread)/np.max(data)
 
     return phases, amps
